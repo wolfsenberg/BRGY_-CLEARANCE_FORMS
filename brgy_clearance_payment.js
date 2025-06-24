@@ -518,14 +518,14 @@ function showSuccessMessage(formData) {
         5: '⭐⭐⭐⭐⭐ Excellent'
     };
     
-    const message = `✅ Payment and feedback submitted successfully!\n\n` +
-          `📋 Submission Details:\n` +
+    const message = `Payment and feedback submitted successfully!\n\n` +
+          `Submission Details:\n` +
           `• Payment Method: ${methodNames[formData.paymentMethod]}\n` +
           `• Name: ${formData.senderName}\n` +
           `• Email: ${formData.senderEmail}\n` +
           `• Rating: ${ratingText[formData.rating]}\n` +
           `• Date: ${formData.transactionDate}\n\n` +
-          `🙏 Thank you for your payment and feedback!\n` +
+          `Thank you for your payment and feedback!\n` +
           `We'll process your submission shortly.`;
           
     alert(message);
