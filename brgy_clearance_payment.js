@@ -3,7 +3,7 @@ let selectedMethod = '';
 let selectedRating = 0;
 
 // Replace this with your actual Google Apps Script Web App URL
-const GOOGLE_SCRIPT_URL = 'YOUR_WEB_APP_URL_HERE';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYXaobjYu8zQUvUFGTzS2sib-fCyQpG4Sx4qMfxUSWEZF2GuFfAVAiynRb1Wec--L2eA/exec';
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', function() {
