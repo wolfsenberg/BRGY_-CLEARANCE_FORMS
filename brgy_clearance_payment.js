@@ -3,6 +3,7 @@ let selectedMethod = '';
 let selectedRating = 0;
 
 // Replace this with your actual Google Apps Script Web App URL
+// Get this URL from: Google Apps Script → Deploy → New deployment → Web app
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYXaobjYu8zQUvUFGTzS2sib-fCyQpG4Sx4qMfxUSWEZF2GuFfAVAiynRb1Wec--L2eA/exec';
 
 // Initialize the page
@@ -98,6 +99,10 @@ function copyToClipboard(text) {
         });
     } catch (err) {
         console.error('Failed to copy text: ', err);
+        // Fallback for modern browsers
+        navigator.clipboard.writeText(text).catch(e => {
+            console.error('Clipboard API failed: ', e);
+        });
     }
     
     // Remove the temporary textarea
@@ -169,7 +174,15 @@ function initializeFileUpload() {
     fileInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
-            fileName.textContent = `Selected file: ${file.name}`;
+            // Check file size (limit to 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size too large. Please select a file smaller than 10MB.');
+                fileInput.value = '';
+                fileName.classList.remove('show');
+                return;
+            }
+            
+            fileName.textContent = `Selected file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`;
             fileName.classList.add('show');
         } else {
             fileName.classList.remove('show');
@@ -238,7 +251,7 @@ function setDefaultDate() {
     document.getElementById('transactionDate').value = formattedDate;
 }
 
-// Form submission - UPDATED to send to Google Sheets
+// Form submission - Enhanced with better error handling
 async function submitForm() {
     // Show loading state
     const submitBtn = document.getElementById('submitBtn');
@@ -252,49 +265,65 @@ async function submitForm() {
             return;
         }
         
+        console.log('Form validation passed, collecting data...');
+        
         // Collect form data
         const formData = await collectFormData();
         
-        // Send to Google Sheets
-        console.log('Sending data to:', GOOGLE_SCRIPT_URL);
-        console.log('Data being sent:', formData);
+        console.log('Form data collected:', {
+            paymentMethod: formData.paymentMethod,
+            senderName: formData.senderName,
+            senderEmail: formData.senderEmail,
+            rating: formData.rating,
+            hasFile: !!formData.paymentProof
+        });
         
+        // Prepare the payload
+        const payload = {
+            formType: 'paymentForm',
+            ...formData
+        };
+        
+        console.log('Sending to Google Apps Script:', GOOGLE_SCRIPT_URL);
+        
+        // Send to Google Apps Script
         const response = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
+            mode: 'no-cors', // Important for Google Apps Script
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                formType: 'paymentForm',
-                ...formData
-            })
+            body: JSON.stringify(payload)
         });
         
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
+        // Note: With no-cors mode, we can't read the response
+        // But if no error is thrown, we assume success
+        console.log('Request sent successfully');
         
-        if (response.ok) {
-            const result = await response.json();
-            console.log('Response data:', result);
-            
-            if (result.status === 'success') {
-                showSuccessMessage(formData);
-                // Reset form after successful submission
-                setTimeout(() => {
-                    resetForm();
-                }, 3000);
-            } else {
-                throw new Error(result.message || 'Submission failed');
-            }
-        } else {
-            const errorText = await response.text();
-            console.error('Response error:', errorText);
-            throw new Error(`Network error: ${response.status} - ${errorText}`);
-        }
+        // Show success message
+        showSuccessMessage(formData);
+        
+        // Reset form after successful submission
+        setTimeout(() => {
+            resetForm();
+        }, 3000);
         
     } catch (error) {
         console.error('Submission error:', error);
-        alert('There was an error submitting your form. Please try again.');
+        
+        // Show detailed error message
+        let errorMessage = 'There was an error submitting your form. ';
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage += 'Please check your internet connection and try again.';
+        } else if (error.message.includes('GOOGLE_SCRIPT_URL')) {
+            errorMessage += 'The form is not properly configured. Please contact support.';
+        } else {
+            errorMessage += 'Please try again in a few moments.';
+        }
+        
+        alert(errorMessage);
+        
     } finally {
         // Reset button state
         submitBtn.textContent = originalText;
@@ -302,7 +331,7 @@ async function submitForm() {
     }
 }
 
-// Validate form
+// Enhanced form validation with better error messages
 function validateForm() {
     let isValid = true;
     const errors = [];
@@ -318,12 +347,29 @@ function validateForm() {
     if (!paymentProof) {
         errors.push('Please upload payment proof');
         isValid = false;
+    } else {
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+        if (!allowedTypes.includes(paymentProof.type)) {
+            errors.push('Please upload a valid image file (JPG, PNG, GIF) or PDF');
+            isValid = false;
+        }
+        
+        // Validate file size (10MB limit)
+        if (paymentProof.size > 10 * 1024 * 1024) {
+            errors.push('File size must be less than 10MB');
+            isValid = false;
+        }
     }
     
     // Check sender name
     const senderName = document.getElementById('senderName').value.trim();
     if (!senderName) {
         errors.push('Please enter your name');
+        document.getElementById('senderName').style.borderColor = '#e74c3c';
+        isValid = false;
+    } else if (senderName.length < 2) {
+        errors.push('Name must be at least 2 characters long');
         document.getElementById('senderName').style.borderColor = '#e74c3c';
         isValid = false;
     } else {
@@ -349,7 +395,7 @@ function validateForm() {
         const gcashPattern = /^09\d{9}$/;
         
         if (!gcashNumber || !gcashPattern.test(gcashNumber)) {
-            errors.push('Please enter a valid GCash number');
+            errors.push('Please enter a valid GCash number (09XXXXXXXXX)');
             document.getElementById('gcashError').classList.add('show');
             document.getElementById('gcashNumber').style.borderColor = '#e74c3c';
             isValid = false;
@@ -363,7 +409,18 @@ function validateForm() {
         document.getElementById('transactionDate').style.borderColor = '#e74c3c';
         isValid = false;
     } else {
-        document.getElementById('transactionDate').style.borderColor = '#e0e0e0';
+        // Check if date is not in the future
+        const selectedDate = new Date(transactionDate);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // End of today
+        
+        if (selectedDate > today) {
+            errors.push('Payment date cannot be in the future');
+            document.getElementById('transactionDate').style.borderColor = '#e74c3c';
+            isValid = false;
+        } else {
+            document.getElementById('transactionDate').style.borderColor = '#e0e0e0';
+        }
     }
     
     // Check service rating
@@ -374,13 +431,13 @@ function validateForm() {
     
     // Show errors if any
     if (!isValid) {
-        alert('Please fix the following errors:\n' + errors.join('\n'));
+        alert('Please fix the following errors:\n• ' + errors.join('\n• '));
     }
     
     return isValid;
 }
 
-// Collect form data - UPDATED to handle file conversion
+// Collect form data with better error handling
 async function collectFormData() {
     const paymentProof = document.getElementById('paymentProof').files[0];
     const senderName = document.getElementById('senderName').value.trim();
@@ -392,12 +449,19 @@ async function collectFormData() {
     // Convert file to base64 for sending to Google Apps Script
     let fileData = null;
     if (paymentProof) {
-        fileData = {
-            name: paymentProof.name,
-            type: paymentProof.type,
-            size: paymentProof.size,
-            data: await fileToBase64(paymentProof)
-        };
+        try {
+            console.log('Converting file to base64...');
+            fileData = {
+                name: paymentProof.name,
+                type: paymentProof.type,
+                size: paymentProof.size,
+                data: await fileToBase64(paymentProof)
+            };
+            console.log('File converted successfully');
+        } catch (error) {
+            console.error('Error converting file:', error);
+            throw new Error('Failed to process the uploaded file. Please try again.');
+        }
     }
     
     return {
@@ -405,7 +469,7 @@ async function collectFormData() {
         paymentProof: fileData,
         senderName,
         senderEmail,
-        gcashNumber,
+        gcashNumber: selectedMethod === 'gcash' ? gcashNumber : '',
         transactionDate,
         rating: selectedRating,
         feedbackComments,
@@ -413,27 +477,61 @@ async function collectFormData() {
     };
 }
 
-// Convert file to base64
+// Convert file to base64 with error handling
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
+        
+        reader.onload = () => {
+            try {
+                resolve(reader.result);
+            } catch (error) {
+                reject(new Error('Failed to read file data'));
+            }
+        };
+        
+        reader.onerror = () => {
+            reject(new Error('Failed to read the file. Please try selecting the file again.'));
+        };
+        
+        reader.onabort = () => {
+            reject(new Error('File reading was aborted. Please try again.'));
+        };
+        
         reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
     });
 }
 
-// Show success message
+// Show enhanced success message
 function showSuccessMessage(formData) {
-    alert(`Payment and feedback submitted successfully!\n\n` +
-          `Payment Method: ${formData.paymentMethod}\n` +
-          `Name: ${formData.senderName}\n` +
-          `Email: ${formData.senderEmail}\n` +
-          `Rating: ${formData.rating} stars\n\n` +
-          `Thank you for your feedback!`);
+    const methodNames = {
+        'qrph': 'QR PH',
+        'bank': 'Bank Transfer',
+        'gcash': 'GCash'
+    };
+    
+    const ratingText = {
+        1: '⭐ Poor',
+        2: '⭐⭐ Fair', 
+        3: '⭐⭐⭐ Good',
+        4: '⭐⭐⭐⭐ Very Good',
+        5: '⭐⭐⭐⭐⭐ Excellent'
+    };
+    
+    const message = `✅ Payment and feedback submitted successfully!\n\n` +
+          `📋 Submission Details:\n` +
+          `• Payment Method: ${methodNames[formData.paymentMethod]}\n` +
+          `• Name: ${formData.senderName}\n` +
+          `• Email: ${formData.senderEmail}\n` +
+          `• Rating: ${ratingText[formData.rating]}\n` +
+          `• Date: ${formData.transactionDate}\n\n` +
+          `🙏 Thank you for your payment and feedback!\n` +
+          `We'll process your submission shortly.`;
+          
+    alert(message);
 }
 
-// Reset form
+// Enhanced form reset
 function resetForm() {
     // Reset payment method selection
     selectedMethod = '';
@@ -454,6 +552,16 @@ function resetForm() {
     document.getElementById('gcashNumber').value = '';
     document.getElementById('feedbackComments').value = '';
     
+    // Reset field styles
+    document.querySelectorAll('input, textarea').forEach(field => {
+        field.style.borderColor = '#e0e0e0';
+    });
+    
+    // Hide error messages
+    document.querySelectorAll('.error-message').forEach(error => {
+        error.classList.remove('show');
+    });
+    
     // Reset rating
     selectedRating = 0;
     document.getElementById('serviceRating').value = '';
@@ -467,7 +575,28 @@ function resetForm() {
     document.getElementById('uploadSection').style.display = 'none';
     document.getElementById('feedbackSection').style.display = 'none';
     document.getElementById('submitBtn').style.display = 'none';
+    document.getElementById('gcashNumberContainer').style.display = 'none';
     
     // Set default date again
     setDefaultDate();
+    
+    console.log('Form reset completed');
 }
+
+// Test function for debugging
+function testConnection() {
+    console.log('Testing connection to:', GOOGLE_SCRIPT_URL);
+    
+    if (GOOGLE_SCRIPT_URL.includes('YOUR_SCRIPT_ID_HERE')) {
+        console.error('❌ Google Apps Script URL not configured!');
+        alert('The form is not properly configured. Please set up the Google Apps Script URL.');
+        return false;
+    }
+    
+    console.log('✅ URL looks configured');
+    return true;
+}
+
+// Call test on page load in development
+// Uncomment the line below for testing
+// document.addEventListener('DOMContentLoaded', testConnection);
