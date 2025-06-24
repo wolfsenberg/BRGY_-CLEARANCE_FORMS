@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barangay Clearance Payment</title>
+    <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="brgy_clearance_payment.css">
+</head>
+<body>
+    <div class="payment-container">
+        <div class="payment-header">
+            <img src="BARANGAY-CLEARANCE-REQUEST-PAYMENTANDFEEDBACK.png" alt="Barangay Clearance Payment Header">
+        </div>
+        
+        <div class="payment-content">
+            <h1>Payment</h1>
+            <p class="subtitle">Processing Fee Payment</p>
+            
+            <div class="payment-amount">
+                <div>Total Amount to Pay</div>
+                <div class="amount">₱50.00</div>
+            </div>
+            
+            <h3>Choose Payment Method</h3>
+            <div class="method-selector">
+                <div class="method-option" onclick="selectMethod('qrph')">
+                    <div class="method-name">QR PH</div>
+                </div>
+                
+                <div class="method-option" onclick="selectMethod('bank')">
+                    <div class="method-name">Bank Transfer</div>
+                </div>
+                
+                <div class="method-option" onclick="selectMethod('gcash')">
+                    <div class="method-name">GCash</div>
+                </div>
+            </div>
+            
+            <!-- QR PH Details -->
+            <div id="qrphDetails" class="payment-details">
+                <h3>QR PH Payment</h3>
+                
+               <div class="qr-section">
+                <div class="qr-code">
+                <img src="qrph.png" alt="QR Code for Payment" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label"><b>Merchant Name:</b></span>
+                    Atimonan Municipal Treasury
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label"><b>Amount:</b></span>
+                    ₱50.00
+                </div>
+                
+                <div class="instructions">
+                    <p>1. Open your mobile banking app that supports QR PH</p>
+                    <p>2. Scan the QR code above</p>
+                    <p>3. Confirm the amount is <strong>₱50.00</strong></p>
+                    <p>4. Complete the transaction</p>
+                    <p>5. Take a screenshot of the payment confirmation</p>
+                </div>
+            </div>
+            
+            <!-- Bank Transfer Details -->
+            <div id="bankDetails" class="payment-details">
+                <h3>Bank Transfer Instructions</h3>
+                
+                <div class="info-row">
+                    <span class="info-label"><b>Account Name:</b></span>
+                    Atimonan Municipal Treasury
+                    <button class="copy-btn" onclick="copyToClipboard('Atimonan Municipal Treasury')">Copy</button>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Account Number:</span>
+                    1234-5678-9012-3456
+                    <button class="copy-btn" onclick="copyToClipboard('1234567890123456')">Copy</button>
+                </div>
+                
+                <div class="instructions">
+                    <p>1. Deposit exactly <strong>₱50.00</strong> to the account above</p>
+                    <p>3. Keep your receipt and upload it below</p>
+                </div>
+            </div>
+            
+            <!-- GCash Details -->
+            <div id="gcashDetails" class="payment-details">
+                <h3>GCash Payment Instructions</h3>
+                
+                <div class="info-row">
+                    <span class="info-label">GCash Name:</span>
+                    ATIMONAN MUNICIPAL TREASURY
+                    <button class="copy-btn" onclick="copyToClipboard('ATIMONAN MUNICIPAL TREASURY')">Copy</button>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">GCash Number:</span>
+                    0917-1234-567
+                    <button class="copy-btn" onclick="copyToClipboard('09171234567')">Copy</button>
+                </div>
+                
+                <div class="instructions">
+                    <p>1. Send exactly <strong>₱50.00</strong> to the number above</p>
+                    <p>3. Take a screenshot and upload it below</p>
+                </div>
+            </div>
+            
+            <!-- Upload Section -->
+            <div class="upload-section" id="uploadSection" style="display: none;">
+                <h3>Upload Payment Proof <span class="required">*</span></h3>
+                <div class="file-upload" onclick="document.getElementById('paymentProof').click()">
+                    Click to upload receipt/screenshot
+                    <input type="file" id="paymentProof" accept="image/*,.pdf" style="display: none;">
+                </div>
+                <div id="fileName"></div>
+                
+                <div class="form-group">
+                    <label for="senderName">Your Name <span class="required">*</span></label>
+                    <input type="text" id="senderName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="senderEmail">Your Email <span class="required">*</span></label>
+                    <input type="email" id="senderEmail" placeholder="example@email.com" required>
+                    <div class="error-message" id="emailError">Please enter a valid email address</div>
+                </div>
+                
+                <div id="gcashNumberContainer" class="form-group">
+                    <label for="gcashNumber">Your GCash Number <span class="required">*</span></label>
+                    <input type="tel" id="gcashNumber" maxlength="11" placeholder="e.g., 09123456789" pattern="[0-9]{11}">
+                    <div class="error-message" id="gcashError">Please enter a valid 11-digit GCash number</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="transactionDate">Payment Date <span class="required">*</span></label>
+                    <input type="date" id="transactionDate" required>
+                </div>
+            </div>
+            
+            <!-- Feedback Section -->
+            <div class="feedback-section" id="feedbackSection" style="display: none;">
+                <h3>Feedback</h3>
+                <p class="feedback-subtitle">Please share your experience with our service</p>
+                
+                <div class="form-group">
+                    <label for="serviceRating">Rate our service <span class="required">*</span></label>
+                    <div class="rating-container">
+                        <div class="star-rating">
+                            <span class="star" data-rating="1">★</span>
+                            <span class="star" data-rating="2">★</span>
+                            <span class="star" data-rating="3">★</span>
+                            <span class="star" data-rating="4">★</span>
+                            <span class="star" data-rating="5">★</span>
+                        </div>
+                        <span class="rating-text" id="ratingText">Click to rate</span>
+                    </div>
+                    <input type="hidden" id="serviceRating" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="feedbackComments">Comments/Suggestions</label>
+                    <textarea id="feedbackComments" rows="3" placeholder="Tell us about your experience or any suggestions for the improvement of our services forms..."></textarea>
+                </div>
+            </div>
+            
+            <button class="submit-btn" id="submitBtn" style="display: none;" onclick="submitForm()">Submit Payment & Feedback</button>
+        </div>
+    </div>
+
+    <script src="brgy_clearance_payment.js"></script>
+</body>
+</html>
